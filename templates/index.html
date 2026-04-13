@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>StudyBuddy — AI Flashcards & Quiz</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #080810;
+      --surface: #0f0f1a;
+      --card: #13131f;
+      --border: #1e1e30;
+      --text: #eeeef5;
+      --muted: #5a5a7a;
+      --neon: #7fff6e;
+      --neon-dark: #5acc4a;
+      --blue: #6e9fff;
+      --pink: #ff6eb4;
+      --yellow: #ffe066;
+      --radius: 16px;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Animated background grid */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(127,255,110,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(127,255,110,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Glow orb */
+    body::after {
+      content: '';
+      position: fixed;
+      top: -200px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(127,255,110,0.08) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    header {
+      position: relative;
+      z-index: 1;
+      padding: 28px 48px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .logo {
+      font-family: 'Syne', sans-serif;
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+
+    .logo span { color: var(--neon); }
+
+    .tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      padding: 5px 12px;
+      border-radius: 100px;
+    }
+
+    main {
+      position: relative;
+      z-index: 1;
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 60px 40px;
+    }
+
+    .hero {
+      text-align: center;
+      margin-bottom: 48px;
+      animation: fadeUp 0.6s ease both;
+    }
+
+    .hero h1 {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(40px, 7vw, 68px);
+      font-weight: 800;
+      line-height: 1.0;
+      letter-spacing: -2px;
+      margin-bottom: 16px;
+    }
+
+    .hero h1 .green { color: var(--neon); }
+    .hero h1 .blue { color: var(--blue); }
+
+    .hero p {
+      color: var(--muted);
+      font-size: 16px;
+      font-weight: 300;
+      max-width: 380px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+    /* Input section */
+    .input-section {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 32px;
+      margin-bottom: 32px;
+      animation: fadeUp 0.6s 0.1s ease both;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 12px;
+    }
+
+    input[type="text"] {
+      flex: 1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 15px;
+      padding: 16px 20px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    input::placeholder { color: var(--muted); }
+    input:focus {
+      border-color: var(--neon);
+      box-shadow: 0 0 0 3px rgba(127,255,110,0.08);
+    }
+
+    .btn {
+      background: var(--neon);
+      color: #080810;
+      border: none;
+      border-radius: 10px;
+      padding: 16px 28px;
+      font-family: 'Syne', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.15s;
+      white-space: nowrap;
+      letter-spacing: 0.02em;
+    }
+
+    .btn:hover { background: var(--neon-dark); transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+    /* Topics */
+    .topics {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 16px;
+    }
+
+    .topic-tag {
+      font-size: 12px;
+      padding: 5px 12px;
+      border-radius: 100px;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .topic-tag:hover {
+      border-color: var(--neon);
+      color: var(--neon);
+    }
+
+    /* Loading */
+    .loading { display: none; text-align: center; padding: 60px 0; }
+    .loading.active { display: block; }
+
+    .pulse-dots {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+
+    .pulse-dots span {
+      width: 10px;
+      height: 10px;
+      background: var(--neon);
+      border-radius: 50%;
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+
+    .pulse-dots span:nth-child(2) { animation-delay: 0.2s; background: var(--blue); }
+    .pulse-dots span:nth-child(3) { animation-delay: 0.4s; background: var(--pink); }
+
+    .loading p {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    /* Results */
+    #results { display: none; animation: fadeUp 0.5s ease both; }
+    #results.active { display: block; }
+
+    /* Summary */
+    .summary-card {
+      background: linear-gradient(135deg, rgba(127,255,110,0.08), rgba(110,159,255,0.08));
+      border: 1px solid rgba(127,255,110,0.2);
+      border-radius: var(--radius);
+      padding: 28px;
+      margin-bottom: 32px;
+    }
+
+    .summary-card h2 {
+      font-family: 'Syne', sans-serif;
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--neon);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .summary-card p {
+      font-size: 14px;
+      font-weight: 300;
+      line-height: 1.7;
+      color: #b0b0c8;
+    }
+
+    /* Section headers */
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .section-header h3 {
+      font-family: 'Syne', sans-serif;
+      font-size: 18px;
+      font-weight: 800;
+    }
+
+    .section-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      padding: 3px 10px;
+      border-radius: 100px;
+      font-weight: 500;
+    }
+
+    .badge-green { background: rgba(127,255,110,0.15); color: var(--neon); }
+    .badge-blue { background: rgba(110,159,255,0.15); color: var(--blue); }
+
+    /* Flashcards */
+    .flashcards-section { margin-bottom: 40px; }
+
+    .flashcard-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 16px;
+    }
+
+    .flashcard {
+      height: 160px;
+      perspective: 1000px;
+      cursor: pointer;
+    }
+
+    .flashcard-inner {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      transform-style: preserve-3d;
+      transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .flashcard.flipped .flashcard-inner {
+      transform: rotateY(180deg);
+    }
+
+    .flashcard-front, .flashcard-back {
+      position: absolute;
+      inset: 0;
+      backface-visibility: hidden;
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .flashcard-front {
+      background: var(--card);
+      border: 1px solid var(--border);
+    }
+
+    .flashcard-back {
+      background: linear-gradient(135deg, rgba(127,255,110,0.1), rgba(110,159,255,0.1));
+      border: 1px solid rgba(127,255,110,0.25);
+      transform: rotateY(180deg);
+    }
+
+    .card-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    .flashcard-back .card-label { color: var(--neon); opacity: 0.7; }
+
+    .card-text {
+      font-size: 13px;
+      font-weight: 500;
+      line-height: 1.5;
+      color: var(--text);
+    }
+
+    .flip-hint {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      color: var(--muted);
+      margin-top: 12px;
+      text-align: right;
+    }
+
+    /* Quiz */
+    .quiz-section { margin-bottom: 40px; }
+
+    .quiz-question {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 16px;
+      transition: border-color 0.2s;
+    }
+
+    .question-text {
+      font-size: 15px;
+      font-weight: 500;
+      margin-bottom: 16px;
+      line-height: 1.5;
+    }
+
+    .question-num {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: var(--blue);
+      margin-bottom: 8px;
+      letter-spacing: 0.05em;
+    }
+
+    .options {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .option {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: left;
+      color: var(--text);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    .option:hover:not(:disabled) {
+      border-color: var(--blue);
+      background: rgba(110,159,255,0.08);
+    }
+
+    .option.correct {
+      border-color: var(--neon);
+      background: rgba(127,255,110,0.1);
+      color: var(--neon);
+    }
+
+    .option.wrong {
+      border-color: var(--pink);
+      background: rgba(255,110,180,0.08);
+      color: var(--pink);
+    }
+
+    .option:disabled { cursor: not-allowed; }
+
+    .explanation {
+      display: none;
+      margin-top: 14px;
+      padding: 12px 16px;
+      background: rgba(255,224,102,0.06);
+      border: 1px solid rgba(255,224,102,0.2);
+      border-radius: 8px;
+      font-size: 13px;
+      color: var(--yellow);
+      line-height: 1.5;
+    }
+
+    .explanation.show { display: block; }
+
+    /* Score */
+    .score-bar {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 20px;
+    }
+
+    .score-text {
+      font-family: 'Syne', sans-serif;
+      font-size: 16px;
+      font-weight: 800;
+    }
+
+    .score-num {
+      font-family: 'Syne', sans-serif;
+      font-size: 32px;
+      font-weight: 800;
+      color: var(--neon);
+    }
+
+    .error-msg {
+      display: none;
+      background: rgba(255,110,180,0.08);
+      border: 1px solid rgba(255,110,180,0.25);
+      border-radius: 10px;
+      padding: 14px 20px;
+      color: var(--pink);
+      font-size: 13px;
+      margin-top: 12px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .error-msg.active { display: block; }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(0.8); opacity: 0.5; }
+      50% { transform: scale(1.2); opacity: 1; }
+    }
+
+    @media (max-width: 600px) {
+      header { padding: 20px 24px; }
+      main { padding: 40px 20px; }
+      .input-row { flex-direction: column; }
+      .options { grid-template-columns: 1fr; }
+      .flashcard-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Study<span>Buddy</span></div>
+  <div class="tag">AI · Groq · Flask</div>
+</header>
+
+<main>
+  <div class="hero">
+    <h1><span class="green">Learn</span> anything<br/><span class="blue">instantly</span></h1>
+    <p>Type any topic and get AI-generated flashcards and a quiz in seconds.</p>
+  </div>
+
+  <div class="input-section">
+    <div class="input-row">
+      <input type="text" id="topicInput" placeholder="e.g. Photosynthesis, World War 2, Python loops..." />
+      <button class="btn" id="studyBtn" onclick="generate()">Generate ⚡</button>
+    </div>
+    <div class="topics">
+      <span class="topic-tag" onclick="setTopic('Photosynthesis')">Photosynthesis</span>
+      <span class="topic-tag" onclick="setTopic('French Revolution')">French Revolution</span>
+      <span class="topic-tag" onclick="setTopic('Python Functions')">Python Functions</span>
+      <span class="topic-tag" onclick="setTopic('The Solar System')">Solar System</span>
+      <span class="topic-tag" onclick="setTopic('Algebra Basics')">Algebra</span>
+      <span class="topic-tag" onclick="setTopic('DNA and Genetics')">DNA & Genetics</span>
+    </div>
+    <div class="error-msg" id="errorMsg"></div>
+  </div>
+
+  <div class="loading" id="loading">
+    <div class="pulse-dots">
+      <span></span><span></span><span></span>
+    </div>
+    <p>Generating your study material...</p>
+  </div>
+
+  <div id="results">
+    <!-- Summary -->
+    <div class="summary-card">
+      <h2>📚 <span id="topicTitle"></span></h2>
+      <p id="summaryText"></p>
+    </div>
+
+    <!-- Flashcards -->
+    <div class="flashcards-section">
+      <div class="section-header">
+        <h3>Flashcards</h3>
+        <span class="section-badge badge-green">Click to flip</span>
+      </div>
+      <div class="flashcard-grid" id="flashcardGrid"></div>
+    </div>
+
+    <!-- Quiz -->
+    <div class="quiz-section">
+      <div class="section-header">
+        <h3>Quiz Time</h3>
+        <span class="section-badge badge-blue">5 Questions</span>
+      </div>
+      <div id="quizContainer"></div>
+      <div class="score-bar" id="scoreBar" style="display:none;">
+        <div class="score-text">Your Score</div>
+        <div class="score-num" id="scoreNum">0/5</div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+  let score = 0;
+  let answered = 0;
+  let totalQuestions = 0;
+
+  function setTopic(t) {
+    document.getElementById('topicInput').value = t;
+  }
+
+  async function generate() {
+    const topic = document.getElementById('topicInput').value.trim();
+    const btn = document.getElementById('studyBtn');
+    const loading = document.getElementById('loading');
+    const results = document.getElementById('results');
+    const errorMsg = document.getElementById('errorMsg');
+
+    errorMsg.classList.remove('active');
+    results.classList.remove('active');
+
+    if (!topic) {
+      errorMsg.textContent = '⚠ Please enter a topic first.';
+      errorMsg.classList.add('active');
+      return;
+    }
+
+    btn.disabled = true;
+    loading.classList.add('active');
+    score = 0; answered = 0;
+
+    try {
+      const res = await fetch('/api/study', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topic }),
+      });
+
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+
+      // Summary
+      document.getElementById('topicTitle').textContent = data.topic;
+      document.getElementById('summaryText').textContent = data.summary;
+
+      // Flashcards
+      const grid = document.getElementById('flashcardGrid');
+      grid.innerHTML = '';
+      data.flashcards.forEach((fc, i) => {
+        grid.innerHTML += `
+          <div class="flashcard" onclick="this.classList.toggle('flipped')">
+            <div class="flashcard-inner">
+              <div class="flashcard-front">
+                <div class="card-label">Question ${i+1}</div>
+                <div class="card-text">${fc.question}</div>
+                <div class="flip-hint">tap to flip →</div>
+              </div>
+              <div class="flashcard-back">
+                <div class="card-label">Answer</div>
+                <div class="card-text">${fc.answer}</div>
+              </div>
+            </div>
+          </div>`;
+      });
+
+      // Quiz
+      totalQuestions = data.quiz.length;
+      const quizContainer = document.getElementById('quizContainer');
+      quizContainer.innerHTML = '';
+      document.getElementById('scoreBar').style.display = 'none';
+
+      data.quiz.forEach((q, qi) => {
+        const optionsHtml = q.options.map((opt, oi) => {
+          const letter = ['A','B','C','D'][oi];
+          return `<button class="option" onclick="answer(this, '${letter}', '${q.answer}', 'exp-${qi}')">${letter}. ${opt}</button>`;
+        }).join('');
+
+        quizContainer.innerHTML += `
+          <div class="quiz-question">
+            <div class="question-num">Question ${qi+1} of ${totalQuestions}</div>
+            <div class="question-text">${q.question}</div>
+            <div class="options">${optionsHtml}</div>
+            <div class="explanation" id="exp-${qi}">💡 ${q.explanation}</div>
+          </div>`;
+      });
+
+      loading.classList.remove('active');
+      results.classList.add('active');
+      results.scrollIntoView({ behavior: 'smooth' });
+
+    } catch (err) {
+      loading.classList.remove('active');
+      errorMsg.textContent = '⚠ ' + (err.message || 'Something went wrong.');
+      errorMsg.classList.add('active');
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  function answer(btn, selected, correct, expId) {
+    const allBtns = btn.closest('.options').querySelectorAll('.option');
+    allBtns.forEach(b => b.disabled = true);
+
+    if (selected === correct) {
+      btn.classList.add('correct');
+      score++;
+    } else {
+      btn.classList.add('wrong');
+      allBtns.forEach(b => {
+        if (b.textContent.startsWith(correct)) b.classList.add('correct');
+      });
+    }
+
+    document.getElementById(expId).classList.add('show');
+    answered++;
+
+    if (answered === totalQuestions) {
+      const scoreBar = document.getElementById('scoreBar');
+      scoreBar.style.display = 'flex';
+      document.getElementById('scoreNum').textContent = `${score}/${totalQuestions}`;
+      scoreBar.scrollIntoView({ behavior: 'smooth' });
+    }
+  }
+</script>
+</body>
+</html>
